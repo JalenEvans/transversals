@@ -9,6 +9,7 @@ public sealed class WindowsInputSender : IInputSender
 {
     private const ushort VK_RETURN = 0x0D;
     private const ushort VK_TAB = 0x09;
+    private static readonly TimeSpan ChordEventDelay = TimeSpan.FromMilliseconds(30);
 
     private static readonly IReadOnlyDictionary<string, ushort> VirtualKeys = BuildKeyMap();
 
@@ -61,13 +62,47 @@ public sealed class WindowsInputSender : IInputSender
                 : throw new ArgumentException($"Unknown key '{key}'.", nameof(keys)))
             .ToArray();
 
-        List<INPUT> inputs = new(virtualKeys.Length * 2);
-        foreach (ushort vk in virtualKeys)
-            inputs.Add(Keyboard(vk, 0, ExtendedFlag(vk)));
-        for (int index = virtualKeys.Length - 1; index >= 0; index--)
-            inputs.Add(Keyboard(virtualKeys[index], 0, ExtendedFlag(virtualKeys[index]) | KEYEVENTF_KEYUP));
+        // One event per SendInput with a pause between: some apps (e.g. Windows 11 Notepad) drop a chord
+        // whose events all arrive in a single burst.
+        int pressed = 0;
+        try
+        {
+            foreach (ushort vk in virtualKeys)
+            {
+                if (pressed > 0) Thread.Sleep(ChordEventDelay);
+                Send([Keyboard(vk, 0, ExtendedFlag(vk))]);
+                pressed++;
+            }
 
-        Send(inputs);
+            for (; pressed > 0; pressed--)
+            {
+                Thread.Sleep(ChordEventDelay);
+                ushort vk = virtualKeys[pressed - 1];
+                Send([Keyboard(vk, 0, ExtendedFlag(vk) | KEYEVENTF_KEYUP)]);
+            }
+        }
+        catch
+        {
+            ReleasePressedKeys(virtualKeys, pressed);
+            throw;
+        }
+    }
+
+    /// <summary>Best effort: releases the first <paramref name="pressed"/> keys in reverse order, ignoring failures.</summary>
+    private static void ReleasePressedKeys(ushort[] virtualKeys, int pressed)
+    {
+        for (int index = pressed - 1; index >= 0; index--)
+        {
+            try
+            {
+                ushort vk = virtualKeys[index];
+                Send([Keyboard(vk, 0, ExtendedFlag(vk) | KEYEVENTF_KEYUP)]);
+            }
+            catch
+            {
+                // Keep releasing the rest; the original failure is rethrown by the caller.
+            }
+        }
     }
 
     public void Click(int x, int y, MouseButton button, bool isDouble)
