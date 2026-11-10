@@ -737,7 +737,10 @@ export function createServer(operator: Operator): McpServer {
     "Type text, press a key chord such as ctrl+shift+s, or click at virtual-screen pixel coordinates in the guest's interactive session. " +
       "Click x/y are virtual-screen pixels, not screenshot pixels: take_screenshot returns {imageWidth, imageHeight, screen} next to the image, " +
       "so for a point (px, py) in the screenshot use x = screen.left + px * screen.width / imageWidth and " +
-      "y = screen.top + py * screen.height / imageHeight, rounded to integers.",
+      "y = screen.top + py * screen.height / imageHeight, rounded to integers. " +
+      "Success means Windows accepted the input, not that the target app received it (some apps, e.g. Windows 11 Notepad, " +
+      "can drop fast synthetic input), so verify the effect with ui_find or a screenshot. " +
+      'To fill a text field, prefer ui_interact with action {"type":"value","value":...}.',
     sendInputToolSchema,
     ({ vmId, ...input }) => operator.sendInput(vmId, input as GuestInput),
     sendInputSchema,
@@ -765,7 +768,7 @@ export function createServer(operator: Operator): McpServer {
   register<{ vmId: string; scope?: SemanticScope }>(
     "ui_snapshot",
     "Capture a bounded semantic UI Automation tree from the guest.",
-    { vmId: vmIdSchema, scope: z.unknown().optional() },
+    z.looseObject({ vmId: vmIdSchema, scope: z.unknown().optional() }),
     ({ vmId, scope }) =>
       scope === undefined
         ? operator.uiSnapshot(vmId)
@@ -779,11 +782,11 @@ export function createServer(operator: Operator): McpServer {
   }>(
     "ui_find",
     "Find one guest UI element with a semantic locator.",
-    {
+    z.looseObject({
       vmId: vmIdSchema,
       locator: z.unknown(),
       scope: z.unknown().optional(),
-    },
+    }),
     ({ vmId, locator, scope }) =>
       scope === undefined
         ? operator.uiFind(vmId, locator)
@@ -799,11 +802,11 @@ export function createServer(operator: Operator): McpServer {
   register<{ vmId: string; commands: SemanticCommand[] }>(
     "ui_interact",
     "Run an ordered fail-fast semantic UI command batch in the guest.",
-    {
+    z.looseObject({
       vmId: vmIdSchema,
       // Advertised as a description only, so any input still reaches the strict schema's INVALID_REQUEST.
       commands: z.unknown().describe(SEMANTIC_COMMANDS_DESCRIPTION),
-    },
+    }),
     ({ vmId, commands }) => operator.uiInteract(vmId, commands),
     z
       .object({

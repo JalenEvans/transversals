@@ -1028,6 +1028,28 @@ describe("NS1 invalid input tool error", () => {
 });
 
 // ---------------------------------------------------------------------------
+// NS2: an unknown top-level key is INVALID_REQUEST, never silently stripped before the strict schema.
+// Each input is otherwise valid, so the unknown key is the only reason to reject it.
+
+describe("NS2 unknown top-level keys are rejected host-side", () => {
+  it.each([
+    ["list_windows", { extra: true }],
+    ["focus_window", { handle: 1001, extra: true }],
+    ["ui_snapshot", { extra: true }],
+    ["ui_find", { locator: { role: "Button" }, extra: true }],
+    ["ui_interact", { commands: [{ type: "snapshot" }], extra: true }],
+  ] as const)(
+    "%s rejects an unknown top-level key with INVALID_REQUEST without contacting the agent",
+    async (tool, args) => {
+      const agent = readyAgent();
+      const connection = await connect(BASE_ENV, { runCommand: fakePrlctl(), spawnProcess: agent.spawnProcess });
+
+      await expectHostRejected(connection, agent, tool, args);
+    },
+  );
+});
+
+// ---------------------------------------------------------------------------
 // NN2: screenshot metadata degrades gracefully when the agent omits fields.
 
 describe("NN2 take_screenshot partial metadata", () => {
