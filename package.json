@@ -1,0 +1,39 @@
+{
+  "name": "transversals-mcp",
+  "version": "0.3.0",
+  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JalenEvans/transversals.git"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "transversals": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "guest:build": "dotnet build guest/Transversals.GuestAgent.sln --configuration Release",
+    "guest:test": "dotnet test guest/Transversals.GuestAgent.sln --configuration Release",
+    "guest:publish": "node -e \"require('node:fs').rmSync('dist/guest/win-arm64', { recursive: true, force: true })\" && dotnet clean guest/src/Transversals.GuestAgent/Transversals.GuestAgent.csproj --configuration Release --runtime win-arm64 && dotnet publish guest/src/Transversals.GuestAgent/Transversals.GuestAgent.csproj --configuration Release --runtime win-arm64 --self-contained true --output dist/guest/win-arm64",
+    "verify": "npm test && npm run typecheck && npm run build && npm run guest:test && npm run guest:build",
+    "start": "tsx src/index.ts",
+    "pkg": "bash scripts/build-pkg.sh"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "jsonc-parser": "^3.3.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  }
+}

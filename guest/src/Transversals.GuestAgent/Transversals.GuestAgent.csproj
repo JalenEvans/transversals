@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RuntimeIdentifiers>win-arm64</RuntimeIdentifiers>
+    <SelfContained>false</SelfContained>
+    <Version>0.3.0</Version>
+    <!-- WindowsAgentInfo reports AssemblyInformationalVersion; keep it equal to <Version> without a "+<commit>" suffix. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+
+  <!--
+    Distribution packaging: a self-contained, compressed exe for VMs without .NET installed, shipped
+    alongside its native WPF DLLs (wpfgfx_cor3, PresentationNative_cor3, vcruntime140_cor3, PenImc_cor3).
+    Native libraries are not embedded for self-extraction: an abrupt VM stop can leave a corrupted
+    %TEMP%\.net extraction cache that later crashes the agent at startup (0xc000001d).
+    Applies only when a win-arm64 RID is specified (guest:publish), so plain build/test are unaffected.
+    Trimming and ReadyToRun are intentionally off: WPF, UI Automation, and COM interop are not trim-safe.
+  -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'win-arm64'">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>false</IncludeNativeLibrariesForSelfExtract>
+    <PublishTrimmed>false</PublishTrimmed>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WPF" PrivateAssets="all" />
+  </ItemGroup>
+</Project>
